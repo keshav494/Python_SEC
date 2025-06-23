@@ -1,2 +1,2 @@
 # Python_SEC
-Repo for SEC script that allows you to fetch data from the Edgar API.
+Repo for SEC script that allows you to fetch data from the Edgar API using company CIK.

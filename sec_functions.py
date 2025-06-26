@@ -34,3 +34,38 @@ def get_filtered_filings(ticker, ten_k=True, just_acession_numbers=False, header
         return accession_df
     else:
         return df
+    
+def get_facts(ticker, headers=headers):
+    cik = sf.cik_matching_ticker(ticker)
+    url = f"http://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+    company_facts = requests.get(url, headers=headers).json()
+    return company_facts
+
+def facts_DF(ticker, headers=headers):
+    facts = get_facts(ticker, headers)
+    us_gaap_data = facts["facts"]["us-gaap"]            #this is not just one year or one filing, this is all the data and there are two categories under facts - dei and us-gaap. You can check the relevant tags on edgar
+    df_data = []
+
+    for fact, details in us_gaap_data.items():
+        for unit in details["units"]:
+            for item in details["units"][unit]:
+                row = item.copy()
+                row["fact"] = fact
+                df_data.append(row)
+
+    df = pd.DataFrame(df_data)
+    df["end"] = pd.to_datetime(df["end"])
+    df["start"] = pd.to_datetime(df["start"])
+    df = df.drop_duplicates(subset=["fact", "end", "val"])    #to remove any duplicates from mutliple forms like 8K etc.
+    df.set_index("end", inplace=True)
+    labels_dict = {fact: details["label"] for fact, details in us_gaap_data.items()}
+    return df, labels_dict
+
+def annual_facts(ticker, headers=headers):
+    accession_nums = sf.get_filtered_filings(ticker, ten_k=True, just_acession_numbers=True)
+    df, label_dict = facts_DF(ticker, headers)
+    ten_k = df[df["accn"].isin(accession_nums)]
+    ten_k = ten_k[ten_k.index.isin(accession_nums.index)]
+    pivot = ten_k.pivot_table(values="val", columns="fact", index="end")
+    pivot.rename(columns=label_dict, inplace=True)
+    return pivot.T

@@ -2,8 +2,6 @@ import pandas as pd
 import requests
 from headers import headers
 
-headers = {"User-Agent": "trial.keshav@gmail.com"}
-
 def cik_matching_ticker (ticker, headers=headers):
     ticker = ticker.upper().replace(".", "-")
     ticker_json = requests.get("https://www.sec.gov/files/company_tickers.json", headers=headers).json()
@@ -15,7 +13,7 @@ def cik_matching_ticker (ticker, headers=headers):
     raise ValueError(f"Ticker {ticker} not found in SEC database")
 
 def get_submission_data(ticker, headers=headers, only_filings_df=False):
-    cik = sf.cik_matching_ticker(ticker)
+    cik = cik_matching_ticker(ticker)
     url = f"https://data.sec.gov/submissions/CIK{cik}.json"
     company_json=requests.get(url, headers=headers).json()
     if only_filings_df:
@@ -29,14 +27,14 @@ def get_filtered_filings(ticker, ten_k=True, just_acession_numbers=False, header
     else:
         df = company_filings_df[company_filings_df['form'] == "10-Q"]
     if just_acession_numbers:
-        df = df.set_index['reportDate']
+        df = df.set_index('reportDate')
         accession_df = df['accessionNumber']
         return accession_df
     else:
         return df
     
 def get_facts(ticker, headers=headers):
-    cik = sf.cik_matching_ticker(ticker)
+    cik = cik_matching_ticker(ticker)
     url = f"http://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
     company_facts = requests.get(url, headers=headers).json()
     return company_facts
@@ -62,7 +60,7 @@ def facts_DF(ticker, headers=headers):
     return df, labels_dict
 
 def annual_facts(ticker, headers=headers):
-    accession_nums = sf.get_filtered_filings(ticker, ten_k=True, just_acession_numbers=True)
+    accession_nums = get_filtered_filings(ticker, ten_k=True, just_acession_numbers=True)
     df, label_dict = facts_DF(ticker, headers)
     ten_k = df[df["accn"].isin(accession_nums)]
     ten_k = ten_k[ten_k.index.isin(accession_nums.index)]
